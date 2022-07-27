@@ -1,0 +1,5 @@
+# OT2 in lab
+- ip: IP.ADDRESS
+  ssh_key: full/path/to/ssh/key 
+  model: OT2
+  version: 5 # If unsure, leave at 5
