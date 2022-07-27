@@ -31,17 +31,15 @@ RUN echo "source $ROS_ROOT/setup.bash" >> ~/.bashrc
 # creating, downloading resource directories ros packages and sourcing an overlay
 RUN mkdir -p $ROS_WS/src/demo \
     && mkdir -p $ROS_WS/src/demo_interfaces \
-    && mkdir -p /root/config/temp
+    
 WORKDIR /root
-COPY resources/test_config.yaml /root/test_config.yaml
-RUN git clone -b dev-kyle https://github.com/KPHippe/ot2_driver.git \
-    && pip3 install -r ot2_driver/requirements.txt \
-    && useradd user \
-    && chown user:user ot2_driver \
-    && mkdir -p /root/
+COPY resources/robot_config.yaml /root/robot_config.yaml
+COPY resources/protocol_config.yaml /root/protocol_config.yaml
+
 WORKDIR $ROS_WS
-COPY demo/ src/demo
-COPY demo_interfaces/ src/demo_interfaces
+#COPY demo/ src/demo
+#COPY demo_interfaces/ src/demo_interfaces
+RUN git clone -b demo https://github.com/kjwelbeck3/OT2_actions.git 
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-colcon-common-extensions \
