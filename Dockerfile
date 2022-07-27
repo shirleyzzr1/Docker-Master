@@ -30,7 +30,7 @@ RUN echo "source $ROS_ROOT/setup.bash" >> ~/.bashrc
 
 # creating, downloading resource directories ros packages and sourcing an overlay
 RUN mkdir -p $ROS_WS/src/demo \
-    && mkdir -p $ROS_WS/src/demo_interfaces \
+    && mkdir -p $ROS_WS/src/demo_interfaces
     
 WORKDIR /root
 COPY resources/robot_config.yaml /root/robot_config.yaml
