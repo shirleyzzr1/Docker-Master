@@ -60,4 +60,4 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 # setup entrypoint
 COPY ./ros_entrypoint.sh /
 ENTRYPOINT ["/ros_entrypoint.sh"]
-CMD ["bash"]
+CMD ["ros2", "run", "demo", "action_client"]
