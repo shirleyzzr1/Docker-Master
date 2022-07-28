@@ -56,7 +56,10 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     net-tools \
     iputils-ping \
     && rm -rf /var/lib/apt/lists/*
-    
+
+#setup default running script
+COPY ./execute.sh /
+
 # setup entrypoint
 COPY ./ros_entrypoint.sh /
 ENTRYPOINT ["/ros_entrypoint.sh"]
