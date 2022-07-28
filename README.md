@@ -23,9 +23,11 @@
 
 ```docker build -t master .``` 
 
-4. Launch a container instance of the newly-built image and run the action_client node
+4. Launch a container instance of the newly-built image. and run the action_client node
 
-```docker run -it --net=host master ros2 run demo action_client```
+```docker run -it --net=host master```
+
+This will automatically launch the action_client node.
 
 5. In a new terminal, enter into the running container, send run instructions to OT2 by specifying the robot config path (rc_path) and the protocol configuration path (pc_path)
 
