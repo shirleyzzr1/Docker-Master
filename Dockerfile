@@ -30,7 +30,7 @@ RUN echo "source $ROS_ROOT/setup.bash" >> ~/.bashrc
 
 # creating, downloading resource directories ros packages and sourcing an overlay
 RUN mkdir -p $ROS_WS/src/demo \
-    && mkdir -p $ROS_WS/src/demo_interfaces \
+    && mkdir -p $ROS_WS/src/demo_interfaces
     
 WORKDIR /root
 COPY resources/robot_config.yaml /root/robot_config.yaml
@@ -39,7 +39,8 @@ COPY resources/protocol_config.yaml /root/protocol_config.yaml
 WORKDIR $ROS_WS
 #COPY demo/ src/demo
 #COPY demo_interfaces/ src/demo_interfaces
-RUN git clone -b demo https://github.com/kjwelbeck3/OT2_actions.git 
+RUN git clone -b demo https://github.com/kjwelbeck3/OT2_actions.git \
+    && mv OT2_actions src
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-colcon-common-extensions \
