@@ -31,4 +31,4 @@ This will automatically launch the action_client node.
 
 5. In a new terminal, enter into the running container, send run instructions to OT2 by specifying the robot config path (rc_path) and the protocol configuration path (pc_path)
 
-```docker exec -it <container-id-or-name> ros2 service call /execute_job demo_interfaces/srv/ExecuteJob "{rc_path: '/root/robot_config.yaml', pc_path: '/root/protocol_config.yaml'}"```
+```docker exec -it <container-id-or-name> /execute.sh```
