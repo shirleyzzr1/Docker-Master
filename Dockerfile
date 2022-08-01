@@ -1,4 +1,4 @@
-FROM kwelbeck/base-ros2-with-empty-overlay:latest
+FROM kwelbeck/base-ros2-with-empty-overlay:arm64
 
 # Copying config files
 WORKDIR /root
