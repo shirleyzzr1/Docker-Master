@@ -1,0 +1,10 @@
+modules:
+  - name: ot2_1
+    type: OT2
+    id: some_unique_id
+  - name: pf400
+    type: pf400
+    id: other_unique_id
+  - name: ot2_2
+    type: OT2
+    id: unique_id_3
