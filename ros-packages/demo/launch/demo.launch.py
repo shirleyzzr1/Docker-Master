@@ -13,7 +13,7 @@ def generate_launch_description():
             package = 'demo',
             namespace = machine,
             executable = 'action_client',
-            name = 'action_client'+ machine
+            name = 'action_client'
         )
         Nodelist.append(node)
     Manager_node = Node(
