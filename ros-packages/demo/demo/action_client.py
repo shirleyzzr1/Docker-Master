@@ -1,11 +1,23 @@
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
+
 import yaml
+import enum
+
 from demo_interfaces.action import OT2Job
 from demo_interfaces.msg import OT2Job as OT2Jobmsg
 from demo_interfaces.msg import JobHeader
 from demo_interfaces.srv import ExecuteJob
+from std_msgs.msg import String
+
+# Using enum class create enumerations
+class States(enum.Enum):
+   BUSY = 1
+   IDLE = 2
+   ERROR = 3
+
+state = States.IDLE
 
 class DemoActionClient(Node):
     """
@@ -18,11 +30,27 @@ class DemoActionClient(Node):
         super().__init__('demo_action_client')
         self._action_client = ActionClient(self, OT2Job, 'OT2')
         # self.heartbeat_publisher = self.create_publisher()
+
         self.srv = self.create_service(ExecuteJob,'execute_job',self.exectute_job_callback)
+        
+        self.publisher_ = self.create_publisher(String, 'status', 10)
+        timer_period = 0.5  # seconds
+        self.timer = self.create_timer(timer_period, self.timer_callback)
 
         self.get_logger().info("OT2 Action Client running!")
         self.get_logger().info("Send rc_path and pc_path with /execute_job service call")
-        
+    
+    def timer_callback(self):
+        """
+
+        """
+        self.update_states()
+        # self.get_logger().info('Publishing: "%s"' % msg.data))
+
+    def update_states(self,info="None"):
+        msg = String()
+        msg.data = self.get_namespace()[1:] +"/" + state.name+"/"+info
+        self.publisher_.publish(msg)
     
     def exectute_job_callback(self,request,response):
         """
@@ -95,6 +123,9 @@ class DemoActionClient(Node):
         self.get_logger().info("Result from action server:")
         self.get_logger().info("--success: {}".format(result.success))
         self.get_logger().info("--message: {}".format(result.error_msg))
+        if result.success:
+            state = States.IDLE
+            self.update_states()
         # if not result.success:
         #     self.get_logger().info("Error Message: " + result.error_msg)
         # rclpy.shutdown()
