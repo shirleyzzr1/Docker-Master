@@ -1,7 +1,9 @@
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
+
 import yaml
+import enum
 
 from demo_interfaces.action import OT2Job
 from demo_interfaces.msg import OT2Job as OT2Jobmsg
@@ -9,6 +11,13 @@ from demo_interfaces.msg import JobHeader
 from demo_interfaces.srv import ExecuteJob
 from std_msgs.msg import String
 
+# Using enum class create enumerations
+class States(enum.Enum):
+   BUSY = 1
+   IDLE = 2
+   ERROR = 3
+
+state = States.IDLE
 
 class DemoActionClient(Node):
     """
@@ -22,41 +31,26 @@ class DemoActionClient(Node):
         self._action_client = ActionClient(self, OT2Job, 'OT2')
         # self.heartbeat_publisher = self.create_publisher()
 
-        self.machines = self.parse_machines()
-        self.machine_states = self.create_states()
-        self.create_subs()
-
         self.srv = self.create_service(ExecuteJob,'execute_job',self.exectute_job_callback)
+        
+        self.publisher_ = self.create_publisher(String, 'status', 10)
+        timer_period = 0.5  # seconds
+        self.timer = self.create_timer(timer_period, self.timer_callback)
 
         self.get_logger().info("OT2 Action Client running!")
         self.get_logger().info("Send rc_path and pc_path with /execute_job service call")
-        
-    def parse_machines(self):
-        user_path = "/root/example_ws.yml"
-        load_data = yaml.safe_load(open(user_path))
-        machines= load_data['modules']
-        names = []
-        for m in machines:
-            names.append(m['name'])
-        return names
+    
+    def timer_callback(self):
+        """
 
-    def create_states(self):
-        dicts = {}
-        for machine in self.machines:
-            self.get_logger().info(machine)
-            dicts[machine]="ERROR"
-        return dicts
+        """
+        self.update_states()
+        # self.get_logger().info('Publishing: "%s"' % msg.data))
 
-    def create_subs(self):
-        for name in self.machines:
-            setattr(self,"sub"+name, self.create_subscription(String,"/"+name+"/status",lambda msg:self.common_callback(msg),10))
-        
-    def common_callback(self,msg):
-        # self.get_logger().info('I heard: "%s"'%msg.data)
-        machine,states = msg.data.split(" ")
-        if self.machine_states[machine]=="ERROR" and states=="IDLE":
-            self.get_logger().info(machine+" is now IDLE!")
-            self.machine_states[machine]="IDLE"
+    def update_states(self,info="None"):
+        msg = String()
+        msg.data = self.get_namespace()[1:] +"/" + state.name+"/"+info
+        self.publisher_.publish(msg)
     
     def exectute_job_callback(self,request,response):
         """
@@ -129,6 +123,9 @@ class DemoActionClient(Node):
         self.get_logger().info("Result from action server:")
         self.get_logger().info("--success: {}".format(result.success))
         self.get_logger().info("--message: {}".format(result.error_msg))
+        if result.success:
+            state = States.IDLE
+            self.update_states()
         # if not result.success:
         #     self.get_logger().info("Error Message: " + result.error_msg)
         # rclpy.shutdown()
