@@ -5,10 +5,10 @@ equipment:
   - name: corning_96_wellplate_360ul_flat
     location: "3"
     alias: dest
-  - name: opentrons_96_tiprack_1000ul
+  - name: opentrons_96_tiprack_300ul
     location: "8"
-  - name: p1000_single_gen2
-    mount: right
+  - name: p300_multi_gen2
+    mount: left
 commands:
   - name: example command
     source: source:A1
