@@ -90,7 +90,7 @@ class DemoActionClient(Node):
 
         goal_msg.job.robot_config = robot_config
         goal_msg.job.protocol_config = protocol_config
-        goal_msg.job.simulate = True
+        goal_msg.job.simulate = False
         
         self._action_client.wait_for_server()
 
