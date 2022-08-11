@@ -14,7 +14,7 @@ SHELL ["/bin/bash", "-c"]
 RUN source $ROS_ROOT/setup.bash && colcon build --symlink-install && source $ROS_WS/install/setup.bash
 
 # Copying in entrypoint and intiator scripts
-COPY ["execute.sh", "ros_entrypoint.sh", "/"]
+COPY ["execute.sh", "ros_entrypoint.sh",  "/"]
 
 # On image run, source overlay and launch node
 ENTRYPOINT ["/ros_entrypoint.sh"]
