@@ -18,4 +18,5 @@ COPY ["execute.sh", "ros_entrypoint.sh", "/"]
 
 # On image run, source overlay and launch node
 ENTRYPOINT ["/ros_entrypoint.sh"]
-CMD ["ros2", "run", "demo", "action_client"]
+#CMD ["ros2", "run", "demo", "action_client"]
+CMD ros2 launch demo demo.launch.py
