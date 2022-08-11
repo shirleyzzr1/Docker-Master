@@ -23,7 +23,9 @@ setup(
     entry_points={
         'console_scripts': [
             'action_client = demo.action_client:main',
-            'client_manager = demo.client_manager:main'
+            'client_manager = demo.client_manager:main',
+            'error_handler = demo.error_handler:main'
+
 
         ],
     },

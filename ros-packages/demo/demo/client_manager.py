@@ -3,6 +3,8 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 
 from demo_interfaces.srv import ExecuteJob
+
+from demo_interfaces.msg import EmergencyAlert
 from std_msgs.msg import String
 
 import yaml
@@ -13,11 +15,11 @@ class ClientManager(Node):
         self.workcell_data = None
         self.machines = self.parse_machines()
         self.machine_states = self.create_states()
+        self.steps = self.workcell_data['actions']
 
         self.create_subs()
-
-        self.steps = self.workcell_data['actions']
         self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job')
+        self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
 
     def parse_machines(self):
         user_path = "/root/example_ws.yml"
@@ -61,6 +63,9 @@ class ClientManager(Node):
         rclpy.spin_until_future_complete(self, self.future)
         return self.future.result()
 
+    def emergency_callback(self,msg):
+        if msg.message!="":
+            self.get_logger().info("client_manager received an emergency alert: " + msg.message)
 
 def main(args=None):
     rclpy.init(args=args)

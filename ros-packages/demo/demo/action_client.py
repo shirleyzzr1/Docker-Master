@@ -8,7 +8,9 @@ import enum
 from demo_interfaces.action import OT2Job
 from demo_interfaces.msg import OT2Job as OT2Jobmsg
 from demo_interfaces.msg import JobHeader
+from demo_interfaces.msg import EmergencyAlert
 from demo_interfaces.srv import ExecuteJob
+
 from std_msgs.msg import String
 
 # Using enum class create enumerations
@@ -29,11 +31,15 @@ class DemoActionClient(Node):
         """
         super().__init__('demo_action_client')
         self._action_client = ActionClient(self, OT2Job, 'OT2')
+        self.name = self.get_namespace()[1:]
         # self.heartbeat_publisher = self.create_publisher()
 
         self.srv = self.create_service(ExecuteJob,'execute_job',self.exectute_job_callback)
-        
+
         self.publisher_ = self.create_publisher(String, 'status', 10)
+        self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
+
+
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
@@ -49,7 +55,7 @@ class DemoActionClient(Node):
 
     def update_states(self,info="None"):
         msg = String()
-        msg.data = self.get_namespace()[1:] +"/" + state.name+"/"+info
+        msg.data = self.name +"/" + state.name+"/"+info
         self.publisher_.publish(msg)
     
     def exectute_job_callback(self,request,response):
@@ -129,7 +135,9 @@ class DemoActionClient(Node):
         # if not result.success:
         #     self.get_logger().info("Error Message: " + result.error_msg)
         # rclpy.shutdown()
-
+    def emergency_callback(self,msg):
+        if msg.message!="":
+            self.get_logger().info(self.name + " client received an emergency alert: " + msg.message)
 
 def main(args=None):
     rclpy.init(args=args)
