@@ -26,7 +26,7 @@ def parse_arguments():
 def generate_yaml(ip_address, file_destination):
     
     with open(file_destination, "w") as file:
-        yaml.dump([{"ip": ip_address }], file)
+        yaml.dump([{"ip": ip_address, "model":"OT2", "version":5 }], file)
 
 if __name__ == "__main__":
     args = parse_arguments()
