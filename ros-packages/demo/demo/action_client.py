@@ -6,18 +6,23 @@ import yaml
 import enum
 
 from demo_interfaces.action import OT2Job
+
 from demo_interfaces.msg import OT2Job as OT2Jobmsg
 from demo_interfaces.msg import JobHeader
 from demo_interfaces.msg import EmergencyAlert
+from demo_interfaces.msg import Heartbeat
+
 from demo_interfaces.srv import ExecuteJob
 
 from std_msgs.msg import String
 
 # Using enum class create enumerations
 class States(enum.Enum):
+   IDLE = 0
    BUSY = 1
-   IDLE = 2
+   FINISHED = 2
    ERROR = 3
+   EMERGENCY =4
 
 state = States.IDLE
 
@@ -36,7 +41,7 @@ class DemoActionClient(Node):
 
         self.srv = self.create_service(ExecuteJob,'execute_job',self.exectute_job_callback)
 
-        self.publisher_ = self.create_publisher(String, 'status', 10)
+        self.publisher_ = self.create_publisher(Heartbeat, 'state', 10)
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
 
 
@@ -50,12 +55,14 @@ class DemoActionClient(Node):
         """
 
         """
-        self.update_states()
+        self.update_state()
         # self.get_logger().info('Publishing: "%s"' % msg.data))
 
-    def update_states(self,info="None"):
-        msg = String()
-        msg.data = self.name +"/" + state.name+"/"+info
+    def update_state(self,info="None"):
+        msg = Heartbeat()
+        msg.header.src = self.name
+        msg.state = state.value
+        msg.message = info
         self.publisher_.publish(msg)
     
     def exectute_job_callback(self,request,response):
@@ -131,7 +138,7 @@ class DemoActionClient(Node):
         self.get_logger().info("--message: {}".format(result.error_msg))
         if result.success:
             state = States.IDLE
-            self.update_states()
+            self.update_state()
         # if not result.success:
         #     self.get_logger().info("Error Message: " + result.error_msg)
         # rclpy.shutdown()

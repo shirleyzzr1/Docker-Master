@@ -12,6 +12,7 @@ class ErrorHandler(Node):
 
         self.srv = self.create_service(RaiseEmergency,'raise_emergency',self.raise_emergency_callback)
         self.emergency_msg = ""
+        self.emergency_flag = False
         self.emergency_publisher = self.create_publisher(EmergencyAlert, '/emergency', 10)
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -19,10 +20,13 @@ class ErrorHandler(Node):
     def timer_callback(self):
         msg = EmergencyAlert()
         msg.message = self.emergency_msg
+        msg.is_emergency = self.emergency_flag
         self.emergency_publisher.publish(msg)
 
     def raise_emergency_callback(self,request, response):
         self.emergency_msg = request.alert.message
+        self.emergency_flag = request.alert.is_emergency
+        
         response.success= True
         response.error_msg = "None"
         return response

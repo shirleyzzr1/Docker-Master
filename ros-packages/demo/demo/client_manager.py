@@ -5,9 +5,19 @@ from rclpy.node import Node
 from demo_interfaces.srv import ExecuteJob
 
 from demo_interfaces.msg import EmergencyAlert
+from demo_interfaces.msg import Heartbeat
 from std_msgs.msg import String
 
 import yaml
+import enum
+
+# Using enum class create enumerations
+class States(enum.Enum):
+   IDLE = 0
+   BUSY = 1
+   FINISHED = 2
+   ERROR = 3
+   EMERGENCY =4
 
 class ClientManager(Node):
     def __init__(self):
@@ -39,11 +49,10 @@ class ClientManager(Node):
 
     def common_callback(self,msg):
         # self.get_logger().info('I heard: "%s"'%msg.data)
-        data = msg.data.split("/")
-        machine = data[0]
-        states = data[1]
-        info = data[2]
-        if self.machine_states[machine]=="ERROR" and states=="IDLE":
+        machine = msg.header.src
+        state = States(msg.state).name
+        info = msg.message
+        if self.machine_states[machine]=="ERROR" and state=="IDLE":
             self.get_logger().info(machine+" is now IDLE!")
             self.machine_states[machine]="IDLE"
         elif self.machine_states[machine]=="ERROR":
@@ -52,7 +61,7 @@ class ClientManager(Node):
 
     def create_subs(self):
         for name,type in self.machines:
-            setattr(self,"sub"+name, self.create_subscription(String,"/"+name+"/status",lambda msg:self.common_callback(msg),10))
+            setattr(self,"sub"+name, self.create_subscription(Heartbeat,"state",lambda msg:self.common_callback(msg),10))
 
     def send_request(self,rc_path,pc_path,machine):
         self.get_logger().info("Sending request")
@@ -64,7 +73,7 @@ class ClientManager(Node):
         return self.future.result()
 
     def emergency_callback(self,msg):
-        if msg.message!="":
+        if msg.is_emergency==True:
             self.get_logger().info("client_manager received an emergency alert: " + msg.message)
 
 def main(args=None):
