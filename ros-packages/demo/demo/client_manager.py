@@ -63,11 +63,12 @@ class ClientManager(Node):
         for name,type in self.machines:
             setattr(self,"sub"+name, self.create_subscription(Heartbeat,"state",lambda msg:self.common_callback(msg),10))
 
-    def send_request(self,rc_path,pc_path,machine):
+    def send_request(self,rc_path,pc_path, robot_ip, machine):
         self.get_logger().info("Sending request")
         req = ExecuteJob.Request()
         req.rc_path = rc_path
         req.pc_path = pc_path
+        req.robot_ip = robot_ip
         self.future = self.executeJob_client.call_async(req)
         rclpy.spin_until_future_complete(self, self.future)
         return self.future.result()
@@ -87,6 +88,7 @@ def main(args=None):
                 client_manager.get_logger().info("Result from if")
                 pc_path = client_manager.steps[0]['command']['args']['pc_path']
                 rc_path = client_manager.steps[0]['command']['args']['rc_path']
-                response = client_manager.send_request(rc_path=rc_path,pc_path=pc_path,machine = module)
+                robot_ip = client_manager.steps[0]['command']['args']['robot_ip']
+                response = client_manager.send_request(rc_path=rc_path,pc_path=pc_path,robot_ip=robot_ip, machine = module)
                 start_exec = 2
         rclpy.spin_once(client_manager,timeout_sec=0)
