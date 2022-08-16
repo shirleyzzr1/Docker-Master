@@ -10,7 +10,8 @@ class ErrorHandler(Node):
     def __init__(self):
         super().__init__('error_handler')
 
-        self.srv = self.create_service(RaiseEmergency,'raise_emergency',self.raise_emergency_callback)
+        self.raise_emergency_srv = self.create_service(RaiseEmergency,'/raise_emergency',lambda req,resp:self.emergency_callback(req,resp))
+        self.clear_emergency_srv = self.create_service(RaiseEmergency,'/clear_emergency',lambda req,resp:self.emergency_callback(req,resp))
         self.emergency_msg = ""
         self.emergency_flag = False
         self.emergency_publisher = self.create_publisher(EmergencyAlert, '/emergency', 10)
@@ -23,10 +24,9 @@ class ErrorHandler(Node):
         msg.is_emergency = self.emergency_flag
         self.emergency_publisher.publish(msg)
 
-    def raise_emergency_callback(self,request, response):
+    def emergency_callback(self,request,response):
         self.emergency_msg = request.alert.message
         self.emergency_flag = request.alert.is_emergency
-        
         response.success= True
         response.error_msg = "None"
         return response

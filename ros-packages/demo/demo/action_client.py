@@ -143,8 +143,8 @@ class DemoActionClient(Node):
         #     self.get_logger().info("Error Message: " + result.error_msg)
         # rclpy.shutdown()
     def emergency_callback(self,msg):
-        if msg.message!="":
-            self.get_logger().info(self.name + " client received an emergency alert: " + msg.message)
+        if msg.is_emergency==True:
+            self.get_logger().info("client_manager received an emergency alert: " + msg.message)
 
 def main(args=None):
     rclpy.init(args=args)
