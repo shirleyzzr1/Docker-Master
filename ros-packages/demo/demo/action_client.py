@@ -4,6 +4,7 @@ from rclpy.node import Node
 
 import yaml
 import enum
+import os
 
 from demo_interfaces.action import OT2Job
 
@@ -43,7 +44,6 @@ class DemoActionClient(Node):
 
         self.publisher_ = self.create_publisher(Heartbeat, 'state', 10)
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
-
 
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -103,7 +103,10 @@ class DemoActionClient(Node):
 
         goal_msg.job.robot_config = robot_config
         goal_msg.job.protocol_config = protocol_config
-        goal_msg.job.simulate = False
+        sim = False
+        if os.getenv('simulate').lower()=='true':
+            sim = True
+        goal_msg.job.simulate = sim
         
         self._action_client.wait_for_server()
 
