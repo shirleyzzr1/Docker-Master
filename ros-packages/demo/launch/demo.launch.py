@@ -22,14 +22,14 @@ def generate_launch_description():
                 executable='client_manager',
                 name='client_manager'
     )
-    ErrorHandler_node = Node(
-                package='demo',
-                namespace='',
-                executable='error_handler',
-                name='error_handler'
-    )
+    # ErrorHandler_node = Node(
+    #             package='demo',
+    #             namespace='',
+    #             executable='error_handler',
+    #             name='error_handler'
+    # )
     Nodelist.append(Manager_node)
-    Nodelist.append(ErrorHandler_node)
+    # Nodelist.append(ErrorHandler_node)
 
 
     return LaunchDescription(Nodelist)
