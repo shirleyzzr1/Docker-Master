@@ -24,7 +24,8 @@ setup(
         'console_scripts': [
             'action_client = demo.action_client:main',
             'client_manager = demo.client_manager:main',
-            'error_handler = demo.error_handler:main'
+            'error_handler = demo.error_handler:main',
+            'visual_tool = demo.visual_tool:main'
 
 
         ],
