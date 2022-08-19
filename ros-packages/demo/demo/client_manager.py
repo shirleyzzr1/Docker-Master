@@ -10,6 +10,7 @@ from std_msgs.msg import String
 
 import yaml
 import enum
+import os
 
 # Using enum class create enumerations
 class States(enum.Enum):
@@ -28,7 +29,7 @@ class ClientManager(Node):
         self.steps = self.workcell_data['actions']
 
         self.create_subs()
-        self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job')
+        self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job') ## TODO 'ot2_1/execute_job
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
 
     def parse_machines(self):
@@ -49,8 +50,9 @@ class ClientManager(Node):
 
     def common_callback(self,msg):
         # self.get_logger().info('I heard: "%s"'%msg.data)
-        machine = msg.header.src
+        machine = msg.header.src.split("/")[1]
         state = States(msg.state).name
+        self.machine_states[machine] = state
         info = msg.message
         if self.machine_states[machine]=="ERROR" and state=="IDLE":
             self.get_logger().info(machine+" is now IDLE!")
@@ -61,14 +63,19 @@ class ClientManager(Node):
 
     def create_subs(self):
         for name,type in self.machines:
-            setattr(self,"sub"+name, self.create_subscription(Heartbeat,"state",lambda msg:self.common_callback(msg),10))
+            setattr(self,"sub"+name, self.create_subscription(Heartbeat, "/{}/action_client/heartbeat".format(name), lambda msg:self.common_callback(msg),10))
 
-    def send_request(self,rc_path,pc_path, robot_ip, machine):
+    def send_request(self,rc_path,pc_path, machine):
         self.get_logger().info("Sending request")
         req = ExecuteJob.Request()
         req.rc_path = rc_path
         req.pc_path = pc_path
-        req.robot_ip = robot_ip
+        req.simulate = False
+        if os.getenv('simulate') and os.getenv('simulate').lower()=='true':
+            req.simulate = True
+        # req.robot_ip = robot_ip
+        if os.getenv('robot_ip'):
+            req.robot_ip = os.getenv('robot_ip')
         self.future = self.executeJob_client.call_async(req)
         rclpy.spin_until_future_complete(self, self.future)
         return self.future.result()
@@ -88,7 +95,9 @@ def main(args=None):
                 client_manager.get_logger().info("Result from if")
                 pc_path = client_manager.steps[0]['command']['args']['pc_path']
                 rc_path = client_manager.steps[0]['command']['args']['rc_path']
-                robot_ip = client_manager.steps[0]['command']['args']['robot_ip']
-                response = client_manager.send_request(rc_path=rc_path,pc_path=pc_path,robot_ip=robot_ip, machine = module)
+                # robot_ip = client_manager.steps[0]['command']['args']['robot_ip']
+                response = client_manager.send_request(rc_path=rc_path,pc_path=pc_path, machine = module)
+                client_manager.get_logger().info("send request success: {}".format(response.success))
+                client_manager.get_logger().info("----message: {}".format(response.error_msg))
                 start_exec = 2
         rclpy.spin_once(client_manager,timeout_sec=0)

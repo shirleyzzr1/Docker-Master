@@ -66,8 +66,8 @@ class DemoActionClient(Node):
 
         ## TODO: Should subscribe to ActionServer node's state, track the heartbeat state of AS
         ##          And only send goal when AS is IDLE
-        self.server_heartbeat_sub = self.create_subscription(Heartbeat, '{}/{}/heartbeat'.format(self.action_server_name), self.server_heartbeat_callback, 10)
-        self.server_heartbeat_flag = "" ## TODO INnitiated state?
+        self.server_heartbeat_sub = self.create_subscription(Heartbeat, 'demo_action_server/heartbeat', self.server_heartbeat_callback, 10)
+        self.server_heartbeat_flag = Heartbeat.IDLE ## TODO INnitiated state?
         
         ## Job service to trigger actions
         self.execute_job_service = self.create_service(ExecuteJob,'execute_job',self.exectute_job_callback)
@@ -75,6 +75,9 @@ class DemoActionClient(Node):
         ## Alert that the Action Server has been created
         self.get_logger().info("OT2 Action Client running!")
         self.get_logger().info("Send rc_path and pc_path with /execute_job service call")
+
+    def get_fully_qualified_name(self) -> str:
+        return "{}/{}".format(self.get_namespace(), self.get_name())
     
     def heartbeat_timer_callback(self):
         """
@@ -106,12 +109,12 @@ class DemoActionClient(Node):
         # if msg.message!="":
             # self.get_logger().info(self.name + " client received an emergency alert: " + msg.message)
         
-        if msg.isEmergency and not self.emergency_flag:
+        if msg.is_emergency and not self.emergency_flag:
             self.emergency_flag = True
             self.get_logger().warn("{} action received an emergency alert: {}".format(self.get_fully_qualified_name(),msg.message)) 
             ## TODO: Should include the source of error in the warn
 
-        if not msg.isEmergency and self.emergency_flag:
+        if not msg.is_emergency and self.emergency_flag:
             self.emergency_flag = False
             self.get_logger().info("Emergency alert(s) cleared.")
 
@@ -162,9 +165,9 @@ class DemoActionClient(Node):
         ## Construct OT2Job goal message
         goal_msg = OT2Job.Goal()
 
-        goal_msg.header.src = self.get_fully_qualified_name()
-        goal_msg.header.dest = "{}/{}".format(self.get_namespace(), self.action_server_name)
-        goal_msg.header.stamp = self.get_clock().now().to_msg()
+        goal_msg.job.header.src = self.get_fully_qualified_name()
+        goal_msg.job.header.dest = "{}/{}".format(self.get_namespace(), self.action_server_name)
+        goal_msg.job.header.stamp = self.get_clock().now().to_msg()
         
         goal_msg.job.robot_config = robot_config
         goal_msg.job.protocol_config = protocol_config
@@ -181,13 +184,13 @@ class DemoActionClient(Node):
             time.sleep(wait_period) 
 
         while self.server_heartbeat_flag != Heartbeat.IDLE: ## TODO: determine if this is blocking to the whole node
-            self.get_logger().warn("Cannot send goal unless {}'s Heartbeat.state is IDLE. Waiting...".format(goal_msg.header.dest))
+            self.get_logger().warn("Cannot send goal unless {}'s Heartbeat.state is IDLE. Waiting...".format(goal_msg.job.header.dest))
             time.sleep(wait_period)
 
         ## Send the goal message
-        self.get_logger().info("Sending goal to {} ...".format(goal_msg.header.dest))
+        self.get_logger().info("Sending goal to {} ...".format(goal_msg.job.header.dest))
         self.goal_future = self._action_client.send_goal_async(goal_msg, feedback_callback=self.goal_feedback_callback)
-        self.goal_future.add_done_callback(self.goal_respond_callback)
+        self.goal_future.add_done_callback(self.goal_response_callback)
         
 
 
@@ -196,11 +199,11 @@ class DemoActionClient(Node):
         Currently reporting the string feedback from the ActionServer
         """
         feedback_msg = feed.feedback
-        self.get_logger().info("From {}: {}".format(feedback_msg.header.src, feedback_msg.progress_msg))
+        self.get_logger().info("From {}: {}".format(feedback_msg.progress.header.src, feedback_msg.progress.progress_msg))
         
 
 
-    def goal_respond_callback(self, future):
+    def goal_response_callback(self, future):
         goal_handle = future.result()
 
         if not goal_handle.accepted:
@@ -209,11 +212,12 @@ class DemoActionClient(Node):
             return
         self.get_logger().info('Goal accepted by ActionClient, {}/{}'.format(self.get_namespace(), self.action_server_name))
 
-        self.goal_result_future = goal_handle.get_result_async()
-        self.goal_result_future.add_done_callback(self.goal_result_callback)
+        
         self._heartbeat_state = Heartbeat.BUSY
         self._heartbeat_info = "Processing Job"
         self.get_logger().info('{}: IDLE --> BUSY'.format(self.get_fully_qualified_name()))
+        self.goal_result_future = goal_handle.get_result_async()
+        self.goal_result_future.add_done_callback(self.goal_result_callback)
         
 
     def goal_result_callback(self, future):
