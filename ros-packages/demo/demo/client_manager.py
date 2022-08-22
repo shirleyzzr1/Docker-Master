@@ -29,9 +29,11 @@ class ClientManager(Node):
         self.steps = self.workcell_data['actions']
 
         self.create_subs()
+        # self.create_clients()
         #### HEAD (CURRENT CHANGE)
         # self.executeJob_client = self.create_client(ExecuteJob, '/ot2_1/execute_job')
-        self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job') ## TODO 'ot2_1/execute_job
+        # self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job') ## TODO 'ot2_1/execute_job
+        self.executeJob_client = None
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
 
     def parse_machines(self):
@@ -55,10 +57,6 @@ class ClientManager(Node):
         machine = msg.header.src.split("/")[1]
         state = States(msg.state).name
         
-        #### HEAD (CURRENT CHANGE)
-        # self.machine_states[machine]=state
-        # self.get_logger().info(machine+" is now "+state)
-
         self.machine_states[machine] = state
         info = msg.message
         if self.machine_states[machine]=="ERROR" and state=="IDLE":
@@ -76,28 +74,42 @@ class ClientManager(Node):
             
             setattr(self,"sub"+name, self.create_subscription(Heartbeat, "/{}/action_client/heartbeat".format(name), lambda msg:self.common_callback(msg),10))
 
-    def send_request(self,rc_path,pc_path, machine):
-        self.get_logger().info("Sending request")
-        sim = False
-        if os.getenv('simulate').lower()=='true':
-            sim = True
-        req = ExecuteJob.Request()
-        req.rc_path = rc_path
-        req.pc_path = pc_path
-        
-        #### HEAD (CURRENT CHANGE)
-        # req.simulate = sim
-        # req.robot_ip = os.getenv('robot_ip')
+    # def create_clients(self):
+    #     for name,type in self.machines:
+    #         setattr(self,"executeJob_"+name, self.create_client(ExecuteJob, "/{}/execute_job".format(name))) 
 
-        req.simulate = False
-        if os.getenv('simulate') and os.getenv('simulate').lower()=='true':
-            req.simulate = True
-        # req.robot_ip = robot_ip
-        if os.getenv('robot_ip'):
-            req.robot_ip = os.getenv('robot_ip')
+    # def send_request(self,rc_path,pc_path, machine):
+    #     self.get_logger().info("Sending request")
+    #     req = ExecuteJob.Request()
+    #     req.rc_path = rc_path
+    #     req.pc_path = pc_path
+        
+    #     #### HEAD (CURRENT CHANGE)
+    #     # req.simulate = sim
+    #     # req.robot_ip = os.getenv('robot_ip')
+
+    #     req.simulate = False
+    #     if os.getenv('simulate') and os.getenv('simulate').lower()=='true':
+    #         req.simulate = True
+    #     # req.robot_ip = robot_ip
+    #     if os.getenv('robot_ip'):
+    #         req.robot_ip = os.getenv('robot_ip')
+
+    #     self.future = self.executeJob_client.call_async(req)
+    #     rclpy.spin_until_future_complete(self, self.future)
+    #     return self.future.result()
+
+    def send_request(self,module,command):
+        req = ExecuteJob.Request()
+
+        #how to change dictionary variable to string
+        req.string = str(command)
+
+        #how to call execute client based on needs
+        self.executeJob_client = self.create_client(ExecuteJob, "/{}/execute_job".format(module))
         self.future = self.executeJob_client.call_async(req)
         rclpy.spin_until_future_complete(self, self.future)
-        return self.future.result()
+    
 
     def emergency_callback(self,msg):
         if msg.is_emergency==True:
@@ -106,19 +118,30 @@ class ClientManager(Node):
 def main(args=None):
     rclpy.init(args=args)
     client_manager = ClientManager()
-    module = client_manager.steps[0]['module']
-    start_exec = 1
+    steps_lens = len(client_manager.steps)
+    current_step = 0
+    working_flag = 0
     while True:
-        if start_exec==1:
-            if client_manager.machine_states[module]=="IDLE":
-                client_manager.get_logger().info("Result from if")
-                pc_path = client_manager.steps[0]['command']['args']['pc_path']
-                rc_path = client_manager.steps[0]['command']['args']['rc_path']
-                #### HEAD (CURRENT CHANGE)
-                # response = client_manager.send_request(rc_path=rc_path,pc_path=pc_path,machine = module)
-                # robot_ip = client_manager.steps[0]['command']['args']['robot_ip']
-                response = client_manager.send_request(rc_path=rc_path,pc_path=pc_path, machine = module)
-                client_manager.get_logger().info("send request success: {}".format(response.success))
-                client_manager.get_logger().info("----message: {}".format(response.error_msg))
-                start_exec = 2
+        if current_step>=steps_lens:
+            break
+        module = client_manager.steps[current_step]['module']
+        command = client_manager.steps[current_step]['command']
+        if (not working_flag) and client_manager.machine_states[module]=="IDLE":
+            working_flag=1
+            client_manager.send_request(module,command)
+            if client_manager.machine_states[module]=="FINISHED":
+                current_step+=1
+                working_flag=0
+
+        # if start_exec==1:
+        #     if client_manager.machine_states[module]=="IDLE":
+        #         client_manager.get_logger().info("Result from if")
+
+        #         pc_path = client_manager.steps[0]['command']['args']['pc_path']
+        #         rc_path = client_manager.steps[0]['command']['args']['rc_path']
+        #         response = client_manager.send_request(rc_path=rc_path,pc_path=pc_path, machine = module)
+        #         client_manager.get_logger().info("send request success: {}".format(response.success))
+        #         client_manager.get_logger().info("----message: {}".format(response.error_msg))
+        #         start_exec = 2
+        # elif 
         rclpy.spin_once(client_manager,timeout_sec=0)

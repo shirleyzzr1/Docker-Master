@@ -6,6 +6,7 @@ from demo_interfaces.srv import ExecuteJob
 
 from demo_interfaces.msg import EmergencyAlert
 from demo_interfaces.msg import Heartbeat
+from demo_interfaces.srv import RaiseEmergency
 from std_msgs.msg import String
 
 import yaml
@@ -31,9 +32,13 @@ class VisualTool(Node):
         self.machine_states = self.create_states()
         self.steps = self.workcell_data['actions']
 
-        self.create_subs()
         self.emergency_flag = False
+
+        self.create_subs()
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
+        self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job') ## TODO 'ot2_1/execute_job
+        self.raiseEmergency_client = self.create_client(RaiseEmergency, '/raise_emergency')
+        self.clearEmergency_client = self.create_client(RaiseEmergency, '/clear_emergency')
 
 
     def parse_machines(self):
@@ -52,31 +57,74 @@ class VisualTool(Node):
         return dicts
 
     def common_callback(self,msg):
-        # self.get_logger().info('I heard: "%s"'%msg.data)
-        machine = msg.header.src
+        """
+        Update machine states based on heartbeat
+        """
+        machine = msg.header.src.split("/")[1]
         state = States(msg.state).name
         self.machine_states[machine]=state
-        # self.get_logger().info(machine+" is now "+state)
         info = msg.message
         if self.machine_states[machine]=="ERROR" and state=="IDLE":
-            # self.get_logger().info(machine+" is now IDLE!")
             self.machine_states[machine]="IDLE"
         elif self.machine_states[machine]=="ERROR":
-            # self.get_logger().info(machine + info)
             self.machine_states[machine]="ERROR"
 
     def create_subs(self):
+        """
+        Create subscription for all the heartbeat
+        """
         for name,type in self.machines:
             setattr(self,"sub"+name, self.create_subscription(Heartbeat,"/{}/action_client/heartbeat".format(name),lambda msg:self.common_callback(msg),10))
-   
+    
+    def send_exec_job_request(self,rc_path,pc_path, machine):
+        """
+        call execute_job service for corresponding machine
+        """
+        req = ExecuteJob.Request()
+        req.rc_path = rc_path
+        req.pc_path = pc_path
+        
+        req.simulate = False
+        if os.getenv('simulate') and os.getenv('simulate').lower()=='true':
+            req.simulate = True
+        # req.robot_ip = robot_ip
+        if os.getenv('robot_ip'):
+            req.robot_ip = os.getenv('robot_ip')
+        self.future = self.executeJob_client.call_async(req)
+        rclpy.spin_until_future_complete(self, self.future)
+        return self.future.result()
+    
+    def send_raise_emer_request(self):
+        """
+        call raise_emergency service
+        """
+        req = RaiseEmergency.Request()
+        req.alert.is_emergency = True
+        self.future = self.raiseEmergency_client.call_async(req)
+        rclpy.spin_until_future_complete(self, self.future)
+        return self.future.result()
+
+    def send_clear_emer_request(self):
+        """
+        call clear_emergency service
+        """
+        req = RaiseEmergency.Request()
+        req.alert.is_emergency = False
+        self.future = self.clearEmergency_client.call_async(req)
+        rclpy.spin_until_future_complete(self, self.future)
+        return self.future.result()
+
     def emergency_callback(self,msg):
+        """
+        Deal with the emergency callback
+        """
         if msg.is_emergency==True:
             self.emergency_flag=True
         else:
             self.emergency_flag = False
             # self.get_logger().info("client_manager received an emergency alert: " + msg.message)
 
-class DrawCurses():
+class DrawCurses(object):
     def __init__(self,machines) -> None:
         self.stdscr = curses.initscr()
         self.curses_init()
@@ -86,9 +134,6 @@ class DrawCurses():
 
 
     def curses_init(self):
-        curses.noecho()
-        curses.cbreak()
-        curses.start_color()
         curses.curs_set(0)
         self.stdscr.keypad(True)
         self.stdscr.nodelay(True)
@@ -123,38 +168,98 @@ class DrawCurses():
                 self.wins[i].addstr(1,0,"          ",curses.A_BLINK | self.RED_AND_BLACK)
             self.wins[i].refresh() 
 
-def main():
+class Menu(object):
+    def __init__(self,items,stdscr):
+        self.window = stdscr.subwin(len(items)+1,30,13,10)
+        self.infowindow = stdscr.subwin(len(items)+1,30,13,40)
+        self.position = 0
+        self.items = items
+        self.items.append("exit")
+        self.flag = -1
+    
+    def navigate(self,n):
+        """
+        Make sure the cursor is not out of boundry
+        """
+        self.position+=n
+        if self.position<0:
+            self.position = 0
+        elif self.position >= len(self.items):
+            self.position = len(self.items) - 1
+
+    def display(self,key):
+        """
+        Update menu display
+        """
+        for index, item in enumerate(self.items):
+            if index == self.position:
+                mode = curses.A_REVERSE
+            else:
+                mode = curses.A_NORMAL
+
+            msg = "%d. %s" % (index, item)
+            self.window.addstr(1 + index, 1, msg, mode)
+
+        if key in [curses.KEY_ENTER, ord("\n")]:
+            if self.position == len(self.items) - 1:
+                return True
+            else:
+                self.flag = self.position
+
+        elif key == curses.KEY_UP:
+            self.navigate(-1)
+
+        elif key == curses.KEY_DOWN:
+            self.navigate(1)
+        self.window.refresh()
+    
+    def show_info(self,msg):
+        self.infowindow.clear()
+        self.infowindow.addstr(2, 0, msg)
+        self.infowindow.refresh()
+
+
+def main(stdscr):
     rclpy.init()
     vis = VisualTool()
 
     drawcurses = DrawCurses(vis.machines)
-
-    x,y = 0,0
-    k = 0
+    items = ["Start Execution","Raise Emergency","Clear Emergency"]
+    menu = Menu(items,drawcurses.stdscr)
+    module = vis.steps[0]['module']
     while True:
         try:
-            
             k = drawcurses.stdscr.getch()
         except:
             k = None
-
-        if k ==curses.KEY_LEFT:
-            x -=1
-        elif k==curses.KEY_RIGHT:
-            x+=1
-        elif k==curses.KEY_UP:
-            y-=1
-        elif k==curses.KEY_DOWN:
-            y+=1
-        elif k==ord('q'):
+        if menu.display(k):
             break
+        if menu.flag==0:
+            if vis.emergency_flag:
+                menu.show_info("Emergency, send failed!")
+            elif vis.machine_states[module]=="IDLE":
+                pc_path = vis.steps[0]['command']['args']['pc_path']
+                rc_path = vis.steps[0]['command']['args']['rc_path']
+                response = vis.send_exec_job_request(rc_path=rc_path,pc_path=pc_path, machine = module)
+                if response.success:
+                    menu.show_info("{} success!".format(menu.items[0]))
+            else:
+                menu.show_info("{} is not IDLE!".format(module))
+        elif menu.flag==1:
+            response = vis.send_raise_emer_request()
+            if response.success:
+                menu.show_info("{} success!".format(menu.items[1]))
+
+        elif menu.flag==2:
+            response = vis.send_clear_emer_request()
+            if response.success:
+                menu.show_info("{} success!".format(menu.items[2]))
+        menu.flag = -1           
 
         drawcurses.update_state(vis.machine_states,vis.emergency_flag)
         rclpy.spin_once(vis,timeout_sec=0)
 
     rclpy.shutdown()
-    curses.endwin()
-
 
 if __name__ == '__main__':
-    wrapper(main())
+    wrapper(main)

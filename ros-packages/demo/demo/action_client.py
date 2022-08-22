@@ -188,13 +188,13 @@ class DemoActionClient(Node):
         ## TODO Emergency check: currently looping but should this terminate after one (?)
         self._action_client.wait_for_server()
         
-        while self.emergency_flag: ## TODO: determine if this is blocking to the whole node ie publishing and subscriptions
-            self.get_logger().warn("Cannot send goal in an emergency event. Waiting...")
-            time.sleep(wait_period) 
+        # while self.emergency_flag: ## TODO: determine if this is blocking to the whole node ie publishing and subscriptions
+        #     self.get_logger().warn("Cannot send goal in an emergency event. Waiting...")
+        #     time.sleep(wait_period) 
 
-        while self.server_heartbeat_flag != Heartbeat.IDLE: ## TODO: determine if this is blocking to the whole node
-            self.get_logger().warn("Cannot send goal unless {}'s Heartbeat.state is IDLE. Waiting...".format(goal_msg.job.header.dest))
-            time.sleep(wait_period)
+        # while self.server_heartbeat_flag != Heartbeat.IDLE: ## TODO: determine if this is blocking to the whole node
+        #     self.get_logger().warn("Cannot send goal unless {}'s Heartbeat.state is IDLE. Waiting...".format(goal_msg.job.header.dest))
+        #     time.sleep(wait_period)
 
         ## Send the goal message
         self.get_logger().info("Sending goal to {} ...".format(goal_msg.job.header.dest))
@@ -242,24 +242,14 @@ class DemoActionClient(Node):
             ## TODO Propogating Error Alerts Upstream
             self._heartbeat_state = Heartbeat.ERROR
             self._heartbeat_info = result.error_msg  
-            
-            
-            
-            # self.update_state()
-        # if not result.success:
-        #     self.get_logger().info("Error Message: " + result.error_msg)
-        # rclpy.shutdown()
-        
-    #### HEAD (CURRENT CHANGE)
-    # def emergency_callback(self,msg):
-    #     if msg.is_emergency==True:
-    #         self.get_logger().info("client_manager received an emergency alert: " + msg.message)
 
 
 def main(args=None):
     rclpy.init(args=args)
     demo_action_client = DemoActionClient()
-    rclpy.spin(demo_action_client)
+    while True:
+        
+        rclpy.spin_once(demo_action_client,timeout_sec=0)
     
 
 if __name__ == '__main__':
