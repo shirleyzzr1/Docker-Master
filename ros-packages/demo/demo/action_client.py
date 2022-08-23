@@ -196,18 +196,19 @@ class DemoActionClient(Node):
         ## TODO Emergency check: currently looping but should this terminate after one (?)
         self._action_client.wait_for_server()
         
-        # while self.emergency_flag: ## TODO: determine if this is blocking to the whole node ie publishing and subscriptions
-        #     self.get_logger().warn("Cannot send goal in an emergency event. Waiting...")
-        #     time.sleep(wait_period) 
+        if self.emergency_flag: ## TODO: determine if this is blocking to the whole node ie publishing and subscriptions
+            self.get_logger().warn("Cannot send goal in an emergency event. Waiting...")
+            time.sleep(wait_period) 
 
-        # while self.server_heartbeat_flag != Heartbeat.IDLE: ## TODO: determine if this is blocking to the whole node
-        #     self.get_logger().warn("Cannot send goal unless {}'s Heartbeat.state is IDLE. Waiting...".format(goal_msg.job.header.dest))
-        #     time.sleep(wait_period)
+        elif self.server_heartbeat_flag != Heartbeat.IDLE: ## TODO: determine if this is blocking to the whole node
+            self.get_logger().warn("Cannot send goal unless {}'s Heartbeat.state is IDLE. Waiting...".format(goal_msg.job.header.dest))
+            time.sleep(wait_period)
 
         ## Send the goal message
-        self.get_logger().info("Sending goal to {} ...".format(goal_msg.job.header.dest))
-        self.goal_future = self._action_client.send_goal_async(goal_msg, feedback_callback=self.goal_feedback_callback)
-        self.goal_future.add_done_callback(self.goal_response_callback)
+        else:
+            self.get_logger().info("Sending goal to {} ...".format(goal_msg.job.header.dest))
+            self.goal_future = self._action_client.send_goal_async(goal_msg, feedback_callback=self.goal_feedback_callback)
+            self.goal_future.add_done_callback(self.goal_response_callback)
         
 
 
