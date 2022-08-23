@@ -3,6 +3,7 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 
 from demo_interfaces.srv import ExecuteJob
+from demo_interfaces.srv import StartJob
 
 from demo_interfaces.msg import EmergencyAlert
 from demo_interfaces.msg import Heartbeat
@@ -33,7 +34,7 @@ class ClientManager(Node):
         #### HEAD (CURRENT CHANGE)
         # self.executeJob_client = self.create_client(ExecuteJob, '/ot2_1/execute_job')
         # self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job') ## TODO 'ot2_1/execute_job
-        self.executeJob_client = None
+        self.startJob_client = None
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
 
     def parse_machines(self):
@@ -100,17 +101,20 @@ class ClientManager(Node):
     #     return self.future.result()
 
     def send_request(self,module,command):
-        req = ExecuteJob.Request()
+        req = StartJob.Request()
 
         #how to change dictionary variable to string
-        req.string = str(command)
+        req.command = yaml.dump(command)
 
         #how to call execute client based on needs
-        self.executeJob_client = self.create_client(ExecuteJob, "/{}/execute_job".format(module))
-        self.future = self.executeJob_client.call_async(req)
+        self.startJob_client = self.create_client(StartJob, "/{}/execute_job".format(module))
+        self.future = self.startJob_client.call_async(req)
         rclpy.spin_until_future_complete(self, self.future)
+        if not self.future.result().success:
+            self.get_logger().info("%s"%self.future.result().error_msg)
+            return False
+        return True
     
-
     def emergency_callback(self,msg):
         if msg.is_emergency==True:
             self.get_logger().info("client_manager received an emergency alert: " + msg.message)

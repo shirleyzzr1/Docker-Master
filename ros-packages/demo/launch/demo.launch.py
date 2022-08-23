@@ -28,7 +28,7 @@ def generate_launch_description():
                 executable='error_handler',
                 name='error_handler'
     )
-    # Nodelist.append(Manager_node)
+    Nodelist.append(Manager_node)
     Nodelist.append(ErrorHandler_node)
 
 

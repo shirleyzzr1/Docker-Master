@@ -15,6 +15,8 @@ from demo_interfaces.msg import EmergencyAlert
 from demo_interfaces.msg import Heartbeat
 
 from demo_interfaces.srv import ExecuteJob
+from demo_interfaces.srv import StartJob
+
 
 from std_msgs.msg import String
 
@@ -74,7 +76,7 @@ class DemoActionClient(Node):
         self.server_heartbeat_flag = Heartbeat.IDLE ## TODO INnitiated state?
         
         ## Job service to trigger actions
-        self.execute_job_service = self.create_service(ExecuteJob,'execute_job',self.exectute_job_callback)
+        self.execute_job_service = self.create_service(StartJob,'execute_job',self.exectute_job_callback)
         
         ## Alert that the Action Server has been created
         self.get_logger().info("OT2 Action Client running!")
@@ -128,27 +130,33 @@ class DemoActionClient(Node):
         Forwards the robot_ip, protocol config, robot_config and simulate option
         through the ActionClient's goal interface to the ActionServer
         """
-        rc_config = None
-        pc_config = None
+
+        command = yaml.safe_load(request.command)
         try:
-            rc_config = yaml.dump(yaml.safe_load(open(request.rc_path)))
-        except IOError:
-            response.error_msg = "No such file or directory:" + request.rc_path
+            pc_path = command['args']['pc_path']
+        except KeyError:
+            response.error_msg = "pc_path not specified in the workflow file" 
             response.success = False
             return response
+        pc_config = None
             
         try:
-            pc_config = yaml.dump(yaml.safe_load(open(request.pc_path)))
+            pc_config = yaml.dump(yaml.safe_load(open(pc_path)))
         except IOError:
-            response.error_msg = "No such file or directory:" + request.pc_path
+            response.error_msg = "No such file for protocol config :" + pc_path
             response.success = False
             return response
 
-        robot_ip = request.robot_ip
-        simulate = request.simulate
+        simulate = False
+        robot_ip = "192.168.10.1"
+        if os.getenv('simulate') and os.getenv('simulate').lower()=='true':
+            simulate = True
+        # req.robot_ip = robot_ip
+        if os.getenv('robot_ip'):
+            robot_ip = os.getenv('robot_ip')
 
         response.success = True
-        self.send_goal(robot_ip, protocol_config=pc_config,robot_config=rc_config, simulate=simulate)
+        self.send_goal(robot_ip, protocol_config=pc_config, simulate=simulate)
 
         ## TODO Should probably validate the arguments passed on. Extra Redundancy
 
