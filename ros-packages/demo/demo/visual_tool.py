@@ -3,6 +3,8 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 
 from demo_interfaces.srv import ExecuteJob
+from demo_interfaces.srv import StartJob
+
 
 from demo_interfaces.msg import EmergencyAlert
 from demo_interfaces.msg import Heartbeat
@@ -36,7 +38,7 @@ class VisualTool(Node):
 
         self.create_subs()
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
-        self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job') ## TODO 'ot2_1/execute_job
+        self.executeJob_client = self.create_client(StartJob, '/execute_job') ## TODO 'ot2_1/execute_job
         self.raiseEmergency_client = self.create_client(RaiseEmergency, '/raise_emergency')
         self.clearEmergency_client = self.create_client(RaiseEmergency, '/clear_emergency')
 
@@ -76,20 +78,11 @@ class VisualTool(Node):
         for name,type in self.machines:
             setattr(self,"sub"+name, self.create_subscription(Heartbeat,"/{}/action_client/heartbeat".format(name),lambda msg:self.common_callback(msg),10))
     
-    def send_exec_job_request(self,rc_path,pc_path, machine):
+    def send_exec_job_request(self):
         """
-        call execute_job service for corresponding machine
         """
-        req = ExecuteJob.Request()
-        req.rc_path = rc_path
-        req.pc_path = pc_path
-        
-        req.simulate = False
-        if os.getenv('simulate') and os.getenv('simulate').lower()=='true':
-            req.simulate = True
-        # req.robot_ip = robot_ip
-        if os.getenv('robot_ip'):
-            req.robot_ip = os.getenv('robot_ip')
+        req = StartJob.Request()
+        req.command = "start"
         self.future = self.executeJob_client.call_async(req)
         rclpy.spin_until_future_complete(self, self.future)
         return self.future.result()
@@ -170,10 +163,10 @@ class DrawCurses(object):
 
 class Menu(object):
     def __init__(self,items,stdscr):
-        self.window = stdscr.subwin(len(items)+1,30,13,10)
-        self.infowindow = stdscr.subwin(len(items)+1,30,13,40)
-        self.position = 0
         self.items = items
+        self.window = stdscr.subwin(10,30,13,10)
+        self.infowindow = stdscr.subwin(10,30,13,40)
+        self.position = 0
         self.items.append("exit")
         self.flag = -1
     
@@ -238,11 +231,11 @@ def main(stdscr):
             if vis.emergency_flag:
                 menu.show_info("Emergency, send failed!")
             elif vis.machine_states[module]=="IDLE":
-                pc_path = vis.steps[0]['command']['args']['pc_path']
-                rc_path = vis.steps[0]['command']['args']['rc_path']
-                response = vis.send_exec_job_request(rc_path=rc_path,pc_path=pc_path, machine = module)
+                response = vis.send_exec_job_request()
                 if response.success:
                     menu.show_info("{} success!".format(menu.items[0]))
+                else:
+                    menu.show_info(response.error_msg)
             else:
                 menu.show_info("{} is not IDLE!".format(module))
         elif menu.flag==1:

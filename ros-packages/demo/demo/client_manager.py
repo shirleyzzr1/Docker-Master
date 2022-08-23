@@ -34,8 +34,11 @@ class ClientManager(Node):
         #### HEAD (CURRENT CHANGE)
         # self.executeJob_client = self.create_client(ExecuteJob, '/ot2_1/execute_job')
         # self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job') ## TODO 'ot2_1/execute_job
+        self.execute_job_service = self.create_service(StartJob,'/execute_job',self.exectute_job_callback)
         self.startJob_client = None
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
+
+        self.start_flag = False
 
     def parse_machines(self):
         user_path = "/root/example_ws.yml"
@@ -90,7 +93,19 @@ class ClientManager(Node):
             self.get_logger().info("%s"%self.future.result().error_msg)
             return False
         return True
-    
+
+    def exectute_job_callback(self,request,response):
+        self.get_logger().info("receive request from user:"+request.command)
+        if request.command=="start":
+
+            if self.start_flag==True:
+                response.error_msg = "workflow is running!"
+                response.success=False
+            else:
+                self.start_flag=True
+                response.success=True
+            return response
+
     def emergency_callback(self,msg):
         if msg.is_emergency==True:
             self.get_logger().info("client_manager received an emergency alert: " + msg.message)
@@ -100,17 +115,18 @@ def main(args=None):
     client_manager = ClientManager()
     steps_lens = len(client_manager.steps)
     current_step = 0
-    working_flag = 0
+    working_flag = 1
     while True:
         if current_step>=steps_lens:
             break
         module = client_manager.steps[current_step]['module']
         command = client_manager.steps[current_step]['command']
-        if (not working_flag) and client_manager.machine_states[module]=="IDLE":
-            working_flag=1
+
+        if client_manager.start_flag and working_flag and client_manager.machine_states[module]=="IDLE":
+            working_flag=0
             client_manager.send_request(module,command)
-            if client_manager.machine_states[module]=="FINISHED":
-                current_step+=1
-                working_flag=0
-                
+        if client_manager.machine_states[module]=="FINISHED":
+            current_step+=1
+            working_flag=1
+
         rclpy.spin_once(client_manager,timeout_sec=0)
