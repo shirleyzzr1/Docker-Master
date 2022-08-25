@@ -1,3 +1,6 @@
+"""
+
+"""
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -23,6 +26,10 @@ class States(enum.Enum):
 
 class ClientManager(Node):
     def __init__(self):
+        """
+        Subscribe to emergency alerts, repond to service call from visual_tool, and send out requests to corresponding
+        action_client.
+        """
         super().__init__('client_manager')
         self.workcell_data = None
         self.machines = self.parse_machines()
@@ -30,10 +37,7 @@ class ClientManager(Node):
         self.steps = self.workcell_data['actions']
 
         self.create_subs()
-        # self.create_clients()
-        #### HEAD (CURRENT CHANGE)
-        # self.executeJob_client = self.create_client(ExecuteJob, '/ot2_1/execute_job')
-        # self.executeJob_client = self.create_client(ExecuteJob, 'ot2_1/execute_job') ## TODO 'ot2_1/execute_job
+
         self.execute_job_service = self.create_service(StartJob,'/execute_job',self.exectute_job_callback)
         self.startJob_client = None
         self.emergency = self.create_subscription(EmergencyAlert,'/emergency',self.emergency_callback,10)
@@ -41,6 +45,9 @@ class ClientManager(Node):
         self.start_flag = False
 
     def parse_machines(self):
+        """
+        Get machine name and type information based on input workflow file
+        """
         user_path = "/root/example_ws.yml"
         self.workcell_data = yaml.safe_load(open(user_path))
         machines= self.workcell_data['modules']
@@ -50,6 +57,9 @@ class ClientManager(Node):
         return names
 
     def create_states(self):
+        """
+        Create dictionary to keep track of the states of all machines
+        """
         dicts = {}
         for machine,type in self.machines:
             self.get_logger().info(machine)
@@ -57,6 +67,9 @@ class ClientManager(Node):
         return dicts
 
     def common_callback(self,msg):
+        """
+        Update machine states based on the information from the action client heartbeat
+        """
         # self.get_logger().info('I heard: "%s"'%msg.data)
         machine = msg.header.src.split("/")[1]
         state = States(msg.state).name
@@ -71,15 +84,18 @@ class ClientManager(Node):
             self.machine_states[machine]="ERROR"
 
     def create_subs(self):
+        """
+        Create subscriptions for all the hearbeat message using a common callback function
+        """
         for name,type in self.machines:
-            
-            #### HEAD (CURRENT CHANGE)
-            # setattr(self,"sub"+name, self.create_subscription(Heartbeat,"/"+name+"/state",lambda msg:self.common_callback(msg),10))
-            
+                       
             setattr(self,"sub"+name, self.create_subscription(Heartbeat, "/{}/action_client/heartbeat".format(name), lambda msg:self.common_callback(msg),10))
 
 
     def send_request(self,module,command):
+        """
+        Call the execute_job service to send out different commands to different module(machines) 
+        """
         req = StartJob.Request()
 
         #how to change dictionary variable to string
@@ -95,6 +111,9 @@ class ClientManager(Node):
         return True
 
     def exectute_job_callback(self,request,response):
+        """
+        Responding to the service call from gui, and set start flag to trigger the start of execution
+        """
         self.get_logger().info("receive request from user:"+request.command)
         if request.command=="start":
 
@@ -107,6 +126,9 @@ class ClientManager(Node):
             return response
 
     def emergency_callback(self,msg):
+        """
+        Deal with the emergency situation, now only showing up info on terminals 
+        """
         if msg.is_emergency==True:
             self.get_logger().info("client_manager received an emergency alert: " + msg.message)
 
@@ -117,8 +139,10 @@ def main(args=None):
     current_step = 0
     working_flag = 1
     while True:
+        #only execute once 
         if current_step>=steps_lens:
             break
+
         module = client_manager.steps[current_step]['module']
         command = client_manager.steps[current_step]['command']
 

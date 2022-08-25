@@ -127,6 +127,9 @@ class DrawCurses(object):
 
 
     def curses_init(self):
+        """
+        Initialize the color and set up curses
+        """
         curses.curs_set(0)
         self.stdscr.keypad(True)
         self.stdscr.nodelay(True)
@@ -138,6 +141,9 @@ class DrawCurses(object):
         self.RED_AND_BLACK = curses.color_pair(2)
 
     def draw_init(self):
+        """
+        Set default menu display
+        """
         for i in range(len(self.machines)):
             rectangle(self.stdscr,2,10+20*i,10,25+20*i)
             self.stdscr.addstr(2,15+20*i,self.machines[i][0])
@@ -167,7 +173,7 @@ class Menu(object):
         self.window = stdscr.subwin(10,30,13,10)
         self.infowindow = stdscr.subwin(10,30,13,40)
         self.position = 0
-        self.items.append("exit")
+        self.items.append("exit")    #Add exit option at the end of menu
         self.flag = -1
     
     def navigate(self,n):
@@ -249,10 +255,12 @@ def main(stdscr):
                 menu.show_info("{} success!".format(menu.items[2]))
         menu.flag = -1           
 
+        #update display based on new machine states and emergency flags
         drawcurses.update_state(vis.machine_states,vis.emergency_flag)
         rclpy.spin_once(vis,timeout_sec=0)
 
     rclpy.shutdown()
 
 if __name__ == '__main__':
+    #avoid complications
     wrapper(main)

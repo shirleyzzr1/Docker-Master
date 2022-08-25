@@ -25,10 +25,10 @@
 
 4. Launch a container instance of the newly-built image. and run the action_client node
 
-```docker run -it --net=host master```
+```docker run -it -e robot_ip=169.254.98.42 -e simulate=false --net=host master```
+This will automatically launch the client_manager,error_handler and action_client nodes.
 
-This will automatically launch the action_client node.
-
-5. In a new terminal, enter into the running container, send run instructions to OT2 by specifying the robot config path (rc_path) and the protocol configuration path (pc_path)
+5. In a new terminal, enter into the running container, then you can interact with GUI to start workflow execution and see state of each machine
 
 ```docker exec -it <container-id-or-name> /execute.sh```
+![](./images/docker.png)
