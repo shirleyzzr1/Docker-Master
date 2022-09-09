@@ -33,6 +33,10 @@ class DemoActionClient(Node):
     - ~/action_server/heartbeat [demo_interfaces/msg/Heartbeat] 
             -- to track OT2/action_server node's state
 
+    Service:
+     - ~/action_client/execute_job [demo_interfaces/EmergencyAlert]
+            -- upstream plug to send goal content to OT2 action server
+
     Service Clients:
      - /raise_emergency [demo_interfaces/srv/RaiseEmergency] 
             -- As part of global emergency system to alert system to OT2 
