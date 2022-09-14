@@ -5,7 +5,6 @@ from rclpy.node import Node
 import yaml
 
 from demo_interfaces.action import OT2Job
-from demo_interfaces.msg import OT2Job 
 from demo_interfaces.msg import EmergencyAlert
 from demo_interfaces.msg import Heartbeat
 from demo_interfaces.srv import ExecuteJob
@@ -67,7 +66,7 @@ class DemoActionClient(Node):
 
         ## TODO !!!!!!ERROR This has to be fetch and enforced by a check on the 
         ## parameter server since the action_server node's name is 
-        ## overriden by the launch file
+        ## overriden by the launch file 
         self.action_server_name = "action_server"  ## was "demo_action_server"
         
 
@@ -96,7 +95,7 @@ class DemoActionClient(Node):
         ## And only send goal when action server's heartbeat state is IDLE 
         ## (ie primed)
         self.server_heartbeat_sub = self.create_subscription(Heartbeat, '{}/heartbeat'.format(self.action_server_name), self.server_heartbeat_callback, 10)
-        self.server_heartbeat_flag = 100 ## TODO Initialize to Unknown for safety; waiting for known state from heartbeat
+        self.server_heartbeat_flag = Heartbeat.IDLE ## TODO Initialize to Unknown for safety; waiting for known state from heartbeat
         
 
         ## Job service to trigger actions
@@ -155,19 +154,13 @@ class DemoActionClient(Node):
 
     def exectute_job_callback(self,request,response):
         """
-        Forwards the robot_ip, protocol config, robot_config and simulate option
+        Forwards the robot_ip, protocol config and simulate option
         through the ActionClient's goal interface to the ActionServer
         TODO Should validate the arguments passed in the request. Extra Redundancy
         """
-        rc_config = None
+
         pc_config = None
 
-        try:
-            rc_config = yaml.dump(yaml.safe_load(open(request.rc_path)))
-        except IOError:
-            response.error_msg = "No such file or directory:" + request.rc_path
-            response.success = False
-            return response
             
         try:
             pc_config = yaml.dump(yaml.safe_load(open(request.pc_path)))
@@ -180,13 +173,13 @@ class DemoActionClient(Node):
         simulate = request.simulate
 
         response.success = True
-        self.send_goal(robot_ip, protocol_config=pc_config,robot_config=rc_config, simulate=simulate)
+        self.send_goal(robot_ip, protocol_config=pc_config, simulate=simulate)
 
         return response
 
 
 
-    def send_goal(self, robot_ip, protocol_config, robot_config, simulate=False ):
+    def send_goal(self, robot_ip, protocol_config, simulate=False ):
         """
         Prep stamped header, robot_ip, protocol_config, robot_config and 
         simulate flag for sending to ActionServer through a timer that waits 
@@ -201,7 +194,7 @@ class DemoActionClient(Node):
         self.goal_msg.job.header.dest = "{}/{}".format(self.get_namespace(), self.action_server_name)
         self.goal_msg.job.header.stamp = self.get_clock().now().to_msg()
 
-        self.goal_msg.job.robot_config = robot_config
+
         self.goal_msg.job.protocol_config = protocol_config
         self.goal_msg.job.robot_ip = robot_ip
         self.goal_msg.job.simulate = simulate
@@ -330,7 +323,6 @@ class DemoActionClient(Node):
             self.get_logger().info('{}: BUSY --> ERROR'.format(self.get_fully_qualified_name()))
 
              
-
 
 def main(args=None):
     """
