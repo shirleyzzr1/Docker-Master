@@ -2,12 +2,12 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 
-import yaml
+import yaml, os
 
 from demo_interfaces.action import OT2Job
 from demo_interfaces.msg import EmergencyAlert
 from demo_interfaces.msg import Heartbeat
-from demo_interfaces.srv import ExecuteJob
+from demo_interfaces.srv import ExecuteJob, StartJob
 
 
 class DemoActionClient(Node):
@@ -99,8 +99,9 @@ class DemoActionClient(Node):
         
 
         ## Job service to trigger actions
+        ## NOTE Reincluded string-based StartJob version, with new callback 
         self.execute_job_service = self.create_service(ExecuteJob,'execute_job',self.exectute_job_callback)
-        
+        self.execute_job2_service = self.create_service(StartJob,'execute2_job',self.exectute_job2_callback)
 
         ## Alert that the Action Server has been created
         self.get_logger().info("OT2 Action Client running!")
@@ -177,6 +178,35 @@ class DemoActionClient(Node):
 
         return response
 
+    def exectute_job2_callback(self,request,response):
+        """
+        NOTE: Temporarily reinstituting this version of execute_job callback 
+        function according to the string-based StartJob service type
+        """
+
+        command = yaml.safe_load(request.command)
+        try:
+            pc_path = command['args']['pc_path']
+        except KeyError:
+            response.error_msg = "pc_path not specified in the workflow file" 
+
+        pc_config = None
+
+        try:
+            pc_config = yaml.dump(yaml.safe_load(open(pc_path)))
+        except IOError:
+            response.error_msg = "No such file for protocol config :" + pc_path
+
+        simulate = False
+        robot_ip = "192.168.10.1"
+        if os.getenv('simulate') and os.getenv('simulate').lower()=='true':
+            simulate = True
+        # req.robot_ip = robot_ip
+        if os.getenv('robot_ip'):
+            robot_ip = os.getenv('robot_ip')
+
+        response.success = True
+        self.send_goal(robot_ip, protocol_config=pc_config, simulate=simulate)
 
 
     def send_goal(self, robot_ip, protocol_config, simulate=False ):

@@ -70,7 +70,7 @@ class ClientManager(Node):
         """
         Update machine states based on the information from the action client heartbeat
         """
-        # self.get_logger().info('I heard: "%s"'%msg.data)
+
         machine = msg.header.src.split("/")[1]
         state = States(msg.state).name
         
@@ -102,7 +102,7 @@ class ClientManager(Node):
         req.command = yaml.dump(command)
 
         #how to call execute client based on needs
-        self.startJob_client = self.create_client(StartJob, "/{}/execute_job".format(module))
+        self.startJob_client = self.create_client(StartJob, "/{}/execute_job2".format(module))
         self.future = self.startJob_client.call_async(req)
         rclpy.spin_until_future_complete(self, self.future)
         if not self.future.result().success:
