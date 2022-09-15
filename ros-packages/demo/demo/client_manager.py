@@ -138,19 +138,23 @@ def main(args=None):
     steps_lens = len(client_manager.steps)
     current_step = 0
     working_flag = 1
-    while True:
-        #only execute once 
-        if current_step>=steps_lens:
-            break
+    try:
+        while True:
+            #only execute once 
+            if current_step>=steps_lens:
+                break
 
-        module = client_manager.steps[current_step]['module']
-        command = client_manager.steps[current_step]['command']
+            module = client_manager.steps[current_step]['module']
+            command = client_manager.steps[current_step]['command']
 
-        if client_manager.start_flag and working_flag and client_manager.machine_states[module]=="IDLE":
-            working_flag=0
-            client_manager.send_request(module,command)
-        if client_manager.machine_states[module]=="FINISHED":
-            current_step+=1
-            working_flag=1
+            if client_manager.start_flag and working_flag and client_manager.machine_states[module]=="IDLE":
+                working_flag=0
+                client_manager.send_request(module,command)
+            if client_manager.machine_states[module]=="FINISHED":
+                current_step+=1
+                working_flag=1
 
-        rclpy.spin_once(client_manager,timeout_sec=0)
+            rclpy.spin_once(client_manager,timeout_sec=0)
+    
+    except KeyboardInterrupt:
+        pass

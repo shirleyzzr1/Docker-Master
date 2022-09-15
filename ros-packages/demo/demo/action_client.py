@@ -101,7 +101,7 @@ class DemoActionClient(Node):
         ## Job service to trigger actions
         ## NOTE Reincluded string-based StartJob version, with new callback 
         self.execute_job_service = self.create_service(ExecuteJob,'execute_job',self.exectute_job_callback)
-        self.execute_job2_service = self.create_service(StartJob,'execute2_job',self.exectute_job2_callback)
+        self.execute_job2_service = self.create_service(StartJob,'execute_job2',self.exectute_job2_callback)
 
         ## Alert that the Action Server has been created
         self.get_logger().info("OT2 Action Client running!")
