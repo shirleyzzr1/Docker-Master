@@ -207,6 +207,8 @@ class DemoActionClient(Node):
 
         response.success = True
         self.send_goal(robot_ip, protocol_config=pc_config, simulate=simulate)
+        
+        return response
 
 
     def send_goal(self, robot_ip, protocol_config, simulate=False ):
